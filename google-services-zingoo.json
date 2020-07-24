@@ -1,0 +1,40 @@
+{
+  "project_info": {
+    "project_number": "565909720498",
+    "firebase_url": "https://zingoo-9f037.firebaseio.com",
+    "project_id": "zingoo-9f037",
+    "storage_bucket": "zingoo-9f037.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:565909720498:android:75c9ddb9b4e803c1eee8ab",
+        "android_client_info": {
+          "package_name": "in.cioc.zingoo"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "565909720498-r4q4r4aa1aqhahpbp7p4v88fgg7sbfev.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBTCk-D_xfikHmzfVLDTvuJInw881ScQt0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "565909720498-r4q4r4aa1aqhahpbp7p4v88fgg7sbfev.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

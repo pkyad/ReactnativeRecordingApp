@@ -1,0 +1,44 @@
+{
+  "expo": {
+    "name": "ZINGOO",
+    "slug": "CIOC-ZINGOO",
+    "privacy": "public",
+    "platforms": [
+      "android"
+    ],
+    "version": "1.0.1",
+    "orientation": "portrait",
+    "icon": "./assets/images/robot-dev.png",
+    "splash": {
+      "image": "./assets/images/robot-dev.png",
+      "resizeMode": "cover",
+      "backgroundColor": "#fff"
+    },
+    "updates": {
+      "enabled": true,
+      "checkAutomatically": "ON_ERROR_RECOVERY",
+      "fallbackToCacheTimeout": 0
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "in.cioc.zingoo",
+      "infoPlist": {
+       "NSCameraUsageDescription": "The app uses the camera to scan QRCodes.",
+       "NSLocationUsageDescription":"The app need access to Location to find Nearby Restaurants Details"
+     }
+    },
+    "android": {
+      "versionCode": 2,
+      "googleServicesFile":"./google-services-zingoo.json",
+      "package": "in.cioc.zingoo",
+      "config": {
+        "googleMaps": {
+           "apiKey": "AIzaSyAtW9IuMlSuGVzsGRzCj1XOUIGz3APhol4"
+         }
+    }
+    }
+  }
+}
