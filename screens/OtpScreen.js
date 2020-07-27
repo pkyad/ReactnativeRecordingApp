@@ -71,10 +71,11 @@ class OtpScreen extends React.Component {
   }
 
 
-  getOtp=()=>{
+  getOtp=async()=>{
     this.setState({loader:true})
     var deviceId = Constants.deviceId
-    fetch(SERVER_URL + '/generateExternalOTP/?mobile='+this.state.mobile+'&deviceid='+deviceId,{
+    var token = await Notifications.getExpoPushTokenAsync();
+    fetch(SERVER_URL + '/generateExternalOTP/?mobile='+this.state.mobile+'&deviceid='+token,{
       headers:{
         'Accept': 'application/json',
         'Content-Type': 'application/json',
