@@ -39,6 +39,9 @@ UIManager.setLayoutAnimationEnabledExperimental &&
 UIManager.setLayoutAnimationEnabledExperimental(true);
 
 
+const WAMP_SERVER = settings.WAMP_SERVER;
+const WAMP_PREFIX = settings.WAMP_PREFIX;
+
 
 class HomeScreen extends React.Component {
 
@@ -51,6 +54,7 @@ class HomeScreen extends React.Component {
     super(props);
     var toContact = props.navigation.getParam('toContact',null)
     var myContact = props.navigation.getParam('myContact',null)
+    var connection = props.navigation.getParam('connection',null)
     this.state={
       isRecording: false,
       video: null,
@@ -89,6 +93,7 @@ class HomeScreen extends React.Component {
       hide:true,
       dataLoad:false,
       fileDownload:false,
+      connection:connection
 
 
       }
@@ -259,7 +264,40 @@ class HomeScreen extends React.Component {
        }
     }
 
+    supportChat=(args)=>{
+      console.log(args[0],'supportchat');
+      var msg = 'One message received from '+ args[0].from
+      ToastAndroid.showWithGravityAndOffset(
+        msg,
+        ToastAndroid.LONG,
+        ToastAndroid.BOTTOM,
+        25,
+        200
+      )
+    }
+
+    subscribe=()=>{
+      // console.log(this.state.connection,'jjjjjjjjjjj');
+      // if(this.state.connection!=null){
+      //   this.state.connection.onopen = (session,details)=>{
+      //     this.setState({session : session});
+      //     session.subscribe(myContact.number.toString(), this.supportChat).then(
+      //       (sub) => {
+      //         console.log('subscribing success support.checkHeartBeat');
+      //       },
+      //       (err) => {
+      //         console.log("failed to subscribe: support.checkHeartBeat"+err);
+      //       });
+      //     }
+      //     this.state.connection.open();
+      //
+      // }
+    }
+
+
+
     componentDidMount(){
+      // this.subscribe()
       this.getPermission()
       this.getMessages()
     }
@@ -1003,6 +1041,7 @@ startRecording=()=>{
       formdata.append("attach",video);
       formdata.append("from",this.state.myContact.number);
       formdata.append("to",strMobile);
+
       formdata.append("notify",true);
       console.log(formdata,this.state.myContact,SERVER_URL + '/sendExternalMessage/?from='+this.state.myContact.number+'&to='+strMobile,'nsdjnbfgjd');
 

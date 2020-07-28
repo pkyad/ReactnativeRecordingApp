@@ -180,10 +180,8 @@ public class ResolveTakenPictureAsyncTask extends AsyncTask<Void, Void, Writable
                 if (!mOptions.hasKey("doNotSave") || !mOptions.getBoolean("doNotSave")) {
 
                     // Prepare file output
-                    File imageFile = new File(getImagePath());
-
+                    File imageFile = new File(RNFileUtils.getOutputFilePath(mCacheDirectory, ".jpg"));
                     imageFile.createNewFile();
-
                     FileOutputStream fOut = new FileOutputStream(imageFile);
 
                     // Save byte array (it is already a JPEG)
@@ -313,20 +311,13 @@ public class ResolveTakenPictureAsyncTask extends AsyncTask<Void, Void, Writable
         return rotationDegrees;
     }
 
-    private String getImagePath() throws IOException{
-        if(mOptions.hasKey("path")){
-            return mOptions.getString("path");
-        }
-        return RNFileUtils.getOutputFilePath(mCacheDirectory, ".jpg");
-    }
-
     private String writeStreamToFile(ByteArrayOutputStream inputStream) throws IOException {
         String outputPath = null;
         IOException exception = null;
         FileOutputStream outputStream = null;
 
         try {
-            outputPath = getImagePath();
+            outputPath = RNFileUtils.getOutputFilePath(mCacheDirectory, ".jpg");
             outputStream = new FileOutputStream(outputPath);
             inputStream.writeTo(outputStream);
         } catch (IOException e) {

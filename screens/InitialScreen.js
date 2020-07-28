@@ -29,6 +29,7 @@ import * as Contacts from 'expo-contacts';
 import { Camera } from 'expo-camera';
 import { Audio, Video } from "expo-av";
 import { Notifications } from 'expo';
+import wamp from 'wamp.js2';
 
 const { width,height } = Dimensions.get('window');
 const SERVER_URL = settings.url
@@ -38,7 +39,8 @@ const { UIManager } = NativeModules;
 UIManager.setLayoutAnimationEnabledExperimental &&
 UIManager.setLayoutAnimationEnabledExperimental(true);
 
-
+const WAMP_SERVER = settings.WAMP_SERVER;
+const WAMP_PREFIX = settings.WAMP_PREFIX;
 
 class InitialScreen extends React.Component {
 
@@ -63,15 +65,37 @@ class InitialScreen extends React.Component {
         searchData:[],
         contactsFull:[],
         listFullData:[],
+        modalVisible: false,
+        message:'',
+        company : 2,
+        firstMessage : null,
+        uid : null,
+        chatThreadPk : null,
+        session : null,
+        connection : new wamp.Connection({url: WAMP_SERVER, realm: 'default'}),
+        companyName : null,
+        mascotName : null,
+        mascotIcon : null,
+        agentPk : null,
+        hasCameraPermission: null,
+        cameraShow:false,
+        messages:[],
+        chatWith:null,
+        getDisplayPic:null,
+        showName:'',
+        routeName:'InitialScreen'
       }
       willFocus = props.navigation.addListener(
        'didFocus',
         payload => {
-          // this.getOtp()
+          this.changeScreen()
         }
      );
   }
 
+  changeScreen=()=>{
+    this.setState({routeName:'InitialScreen'})
+  }
 
   getOtp=()=>{
     this.setState({loader:true})
@@ -137,8 +161,9 @@ class InitialScreen extends React.Component {
      return
    });
   }
+
   getContactsList=(token,number)=>{
-    console.log(token,SERVER_URL + '/getIM/?token='+token,'hhhhhhhhhhh');
+
     // this.setState({loader:true})
     fetch(SERVER_URL + '/getIM/?token='+token,{
       headers:{
@@ -148,7 +173,6 @@ class InitialScreen extends React.Component {
       }
     })
    .then((response) =>{
-     console.log(response.status,'fagshwszh');
      if(response.status==200||response.status==201){
        return  response.json()
      }else{
@@ -156,9 +180,11 @@ class InitialScreen extends React.Component {
      }
    })
    .then((responseJson) => {
-     console.log(responseJson,'cartscbcb');
      this.setState({loader:false})
      if(responseJson!=undefined){
+       responseJson.forEach((i)=>{
+         i.count =0
+       })
       this.setState({list:responseJson,listFullData:responseJson})
       this.getContacts()
       }else{
@@ -171,12 +197,119 @@ class InitialScreen extends React.Component {
    });
   }
 
+  supportChat = (args)=>{
+    console.log(args[0],'supportChat',this.state.routeName);
+
+    if(this.state.routeName=='InitialScreen'){
+      if(args[0].from!=undefined){
+        var contacts = this.state.contacts
+        var list = this.state.list
+        list.forEach((i)=>{
+          if(i.mobile == args[0].from){
+            i.count = i.count +1
+          }
+        })
+        this.setState({list:list})
+        contacts.forEach((i)=>{
+          if(i.mobile == args[0].from){
+            i.count = i.count +1
+          }
+        })
+        this.setState({contacts:contacts})
+      }
+    }
+    var msg = 'One message received from '+ args[0].from
+    ToastAndroid.showWithGravityAndOffset(
+      msg,
+      ToastAndroid.LONG,
+      ToastAndroid.BOTTOM,
+      25,
+      200
+    )
+  }
+
+ //  checkHeartBeat = (args)=>{
+ //   console.log(args,'heartBeat');
+ // }
+ //
+ //  checkHeartBeatt = (args)=>{
+ //   console.log(args,'checkHeartBeatt');
+ // }
+
+
+
   getMyContact=async()=>{
     var myContact = await AsyncStorage.getItem('myContact',null)
     if(JSON.parse(myContact)!=null){
       myContact = JSON.parse(myContact)
       this.setState({mobile:myContact.number,myContact:myContact})
-      this.getContactsList(myContact.token,myContact.number)
+
+      callProcedure=()=>{
+        if (this.state.myContact!=null) {
+             if (this.state.connection == null || this.state.connection.session == null || this.state.connection.session.call == null) {
+               return
+             }
+             this.state.connection.session.call(WAMP_PREFIX +'support.checkHeartBeat.' + this.state.myContact.number, ['online']).then(
+               (res)=> {
+                 console.log(res,'yyyy');
+              },
+              (err)=> {
+                return
+             }
+            );
+           }else {
+             return
+           }
+      }
+
+      this.state.connection.onopen = (session,details)=>{
+          this.setState({session : session});
+          // setInterval(function () {
+          //    try {
+          //       callProcedure();
+          //    }
+          //    catch (e) {
+          //      console.error(e.message);
+          //    }
+          //  }, 2000);
+          session.subscribe(myContact.number.toString(), this.supportChat).then(
+          (sub) => {
+          console.log('subscribing success support.checkHeartBeat');
+          },
+          (err) => {
+            console.log("failed to subscribe: support.checkHeartBeat"+err);
+          });
+
+          // session.publish(WAMP_PREFIX +'support.checkHeartBeat', this.checkHeartBeat).then(
+          //   function (res) {
+          //     console.log("publish to support.checkHeartBeat");
+          //   },
+          //   function (err) {
+          //     console.log("publish failed to subscribe: support.checkHeartBeat");
+          //   }
+          // );
+          //
+          // session.register(WAMP_PREFIX +'support.checkHeartBeat.'+myContact.number, this.checkHeartBeat).then(
+          //   function (res) {
+          //     console.log("register to support.checkHeartBeat",res,'res');
+          //   },
+          //   function (err) {
+          //     console.log("failed to register: support.checkHeartBeat",err);
+          //   }
+          // );
+          //
+          // session.call(WAMP_PREFIX +'support.chat', [2, 3]).then(
+          //    function (res) {
+          //       console.log("Result:", res);
+          //    }
+          // );
+        }
+
+        this.state.connection.open();
+        this.getContactsList(myContact.token,myContact.number)
+    }
+    this.state.connection.onclose = (reason, details)=>{
+      console.log(reason,'resfsd');
     }
   }
   // _handleNotification = notification => {
@@ -225,7 +358,9 @@ class InitialScreen extends React.Component {
            list[findIndex].dp = item.imageAvailable?item.image.uri:null
            this.setState({list:list})
          }
+         item.mobile = strMobile
       }
+      item.count = 0
     })
     appendIndexs.forEach((i)=>{
       contacts.splice(i,1)
@@ -300,6 +435,15 @@ class InitialScreen extends React.Component {
       )
     }
 
+  makeCountZero =(item,index)=>{
+    var list = this.state.list
+    list[index].count = 0
+    this.setState({list:list,routeName:'HomeScreen'})
+    this.props.navigation.navigate('HomeScreen',{connection:this.state.connection,myContact:this.state.myContact,toContact:item})
+  }
+
+
+
   getServerContacts=()=>{
     return(
       <View>
@@ -316,7 +460,7 @@ class InitialScreen extends React.Component {
           renderItem={({item, index})=>{
          return(
            <Card containerStyle={[{ width: width,margin:0,padding:5,borderWidth:0}]}>
-              <TouchableOpacity style={{flex:1,flexDirection:'row',marginVertical:3}} onPress={()=>{this.props.navigation.navigate('HomeScreen',{myContact:this.state.myContact,toContact:item})}}>
+              <TouchableOpacity style={{flex:1,flexDirection:'row',marginVertical:3}} onPress={()=>{this.makeCountZero(item,index)}}>
                   <View style={{flex:0.2,justifyContent:'center',alignItems:'center'}}>
                   {item.dp!=null&&
                     <Image source={{uri:item.dp}} style={{ width:40,height:40,borderRadius:10,backgroundColor:'#f2f2f2',borderWidth:0,borderColor: "#f2f2f2"}}/>
@@ -327,7 +471,7 @@ class InitialScreen extends React.Component {
                     </View>
                   }
                   </View>
-                  <View style={{flex:0.8,}}>
+                  <View style={{flex:item.count==0?0.8:0.7,}}>
                     <View style={{flex:1,alignItems:'center',justifyContent:'center'}}>
                       <View style={{flexDirection:'row',}}>
                         <View style={{flex:1,alignItems:'flex-start',justifyContent:'center'}}>
@@ -341,6 +485,13 @@ class InitialScreen extends React.Component {
                       </View>
                     </View>
                   </View>
+                  {item.count>0&&
+                    <View style={{flex:0.1,alignItems:'center',justifyContent:'center'}}>
+                       <View style={{width:20,height:20,backgroundColor:'#32CD32',alignItems:'center',justifyContent:'center',borderRadius:10}}>
+                          <Text style={{color:'#fff',fontSize:12}}>{item.count}</Text>
+                       </View>
+                    </View>
+                  }
               </TouchableOpacity>
             </Card>
        ) }}
@@ -349,8 +500,11 @@ class InitialScreen extends React.Component {
     )
   }
 
-  goToHome=(item)=>{
+  goToHome=(item,index)=>{
     console.log(item);
+    var list = this.state.contacts
+    list[index].count = 0
+    this.setState({contacts:list})
     if(item.phoneNumbers==undefined){
       ToastAndroid.showWithGravity(
         'No Mobile Number found',
@@ -359,7 +513,8 @@ class InitialScreen extends React.Component {
       )
       return
     }else{
-      this.props.navigation.navigate('HomeScreen',{myContact:this.state.myContact,toContact:item})
+      this.setState({routeName:'HomeScreen'})
+      this.props.navigation.navigate('HomeScreen',{connection:this.state.connection,myContact:this.state.myContact,toContact:item})
     }
   }
 
@@ -449,7 +604,7 @@ class InitialScreen extends React.Component {
                        renderItem={({item, index})=>{
                       return(
                         <Card containerStyle={[{ width: width,margin:0,padding:5,borderWidth:0}]}>
-                           <TouchableOpacity style={{flex:1,flexDirection:'row',marginVertical:3}} onPress={()=>{this.goToHome(item)}}>
+                           <TouchableOpacity style={{flex:1,flexDirection:'row',marginVertical:3}} onPress={()=>{this.goToHome(item,index)}}>
                                <View style={{flex:0.2,justifyContent:'center',alignItems:'center'}}>
                                {item.imageAvailable&&
                                  <Image source={{uri:item.image.uri}} style={{ width:40,height:40,borderRadius:10,backgroundColor:'#f2f2f2',borderWidth:0,borderColor: "#f2f2f2"}}/>
@@ -460,7 +615,7 @@ class InitialScreen extends React.Component {
                                  </View>
                                }
                                </View>
-                               <View style={{flex:0.8,}}>
+                               <View style={{flex:item.count==0?0.8:0.7,}}>
                                  <View style={{flex:1,alignItems:'center',justifyContent:'center'}}>
                                    <View style={{flexDirection:'row',}}>
                                      <View style={{flex:1,alignItems:'flex-start',justifyContent:'center'}}>
@@ -476,6 +631,13 @@ class InitialScreen extends React.Component {
                                    </View>
                                  </View>
                                </View>
+                               {item.count>0&&
+                                 <View style={{flex:0.1,alignItems:'center',justifyContent:'center'}}>
+                                    <View style={{width:20,height:20,backgroundColor:'#32CD32',alignItems:'center',justifyContent:'center',borderRadius:10}}>
+                                       <Text style={{color:'#fff',fontSize:12}}>{item.count}</Text>
+                                    </View>
+                                 </View>
+                               }
                            </TouchableOpacity>
                          </Card>
                     ) }}
