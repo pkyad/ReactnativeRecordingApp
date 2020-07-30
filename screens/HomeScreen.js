@@ -93,7 +93,8 @@ class HomeScreen extends React.Component {
       hide:true,
       dataLoad:false,
       fileDownload:false,
-      connection:connection
+      connection:connection,
+
 
 
       }
@@ -265,7 +266,6 @@ class HomeScreen extends React.Component {
     }
 
     supportChat=(args)=>{
-      console.log(args[0],'supportchat');
       var msg = 'One message received from '+ args[0].from
       ToastAndroid.showWithGravityAndOffset(
         msg,
@@ -277,16 +277,13 @@ class HomeScreen extends React.Component {
     }
 
     subscribe=()=>{
-      // console.log(this.state.connection,'jjjjjjjjjjj');
       // if(this.state.connection!=null){
       //   this.state.connection.onopen = (session,details)=>{
       //     this.setState({session : session});
       //     session.subscribe(myContact.number.toString(), this.supportChat).then(
       //       (sub) => {
-      //         console.log('subscribing success support.checkHeartBeat');
       //       },
       //       (err) => {
-      //         console.log("failed to subscribe: support.checkHeartBeat"+err);
       //       });
       //     }
       //     this.state.connection.open();
@@ -339,7 +336,6 @@ class HomeScreen extends React.Component {
         }
       })
      .then((response) =>{
-       console.log(response.status,'jjjjjjj');
        if(response.status==200||response.status==201){
          return  response.json()
        }else{
@@ -549,6 +545,11 @@ componentWillUnmount=()=>{
        dp = this.state.toContact.imageAvailable?this.state.toContact.image.uri:''
        var name = this.state.toContact.name.length>0?this.state.toContact.name:this.state.toContact.phoneNumbers[0].number
     }
+    var online = false
+    if(this.props.callee!=null&&this.props.callee.status=='online'){
+      console.log(this.props.callee.number);
+      online = true
+    }
     return(
       <View style={{height:55,width:width,backgroundColor:themeColor}}>
       <View style={{flexDirection: 'row',height:55,alignItems: 'center',}}>
@@ -564,8 +565,11 @@ componentWillUnmount=()=>{
             </View>
             }
          </View>
-         <View style={{ flex: 0.75, flexDirection: 'row', justifyContent: 'flex-start', }}>
+         <View style={{ flex: 0.65, flexDirection: 'row', justifyContent: 'flex-start', }}>
            <Text  style={{ color:'#fff',fontWeight:'700',fontSize:18,paddingLeft:5,paddingRight:10}} numberOfLines={1}>{name}</Text>
+         </View>
+         <View style={{ flex: 0.1, flexDirection: 'row', justifyContent: 'flex-start',alignItems:'center' }}>
+           <View  style={{ backgroundColor:online?'#32CD32':'#7e1a05',width:10,height:10,borderRadius:5}} />
          </View>
 
        </View>
@@ -693,7 +697,6 @@ startRecording=()=>{
           this.setState({fileDownload:false})
         });
      }else{
-       console.log(uriFile+'/'+fileName,'asngnd');
        var details = item
        details.localFile = uriFile+'/'+fileName
        this.setState({selectedVideo:item,details:item,fullScreenMode:false,playVideo:true})
@@ -720,7 +723,6 @@ startRecording=()=>{
            this.setState({fileDownload:false})
          });
       }else{
-        console.log(uriFile+'/'+fileName,'asngnd');
         var details = item
         details.localFile = uriFile+'/'+fileName
         this.setState({selectedVideo:item,details:item,fullScreenMode:false,playVideo:true})
@@ -730,6 +732,34 @@ startRecording=()=>{
 
 
  }
+ componentWillReceiveProps(nextProps){
+
+   if (nextProps.receivedMessage !== null && nextProps.receivedMessage !== this.props.receivedMessage) {
+     var messages = this.state.list
+     var obj = {
+       frm : nextProps.receivedMessage.from,
+       to : nextProps.receivedMessage.to,
+       attachment : null,
+       thumbnail : null,
+     }
+     if(this.state.toContact.id==undefined){
+       var mobile = this.state.toContact.mobile
+     }else{
+       var mobile = this.state.toContact.phoneNumbers[0].number
+     }
+     var strMobile = mobile.toString()
+      if(strMobile.includes('+')){
+        strMobile = strMobile.substring(3,strMobile.length)
+      }
+     if(this.state.myContact.number==nextProps.receivedMessage.to&&strMobile==nextProps.receivedMessage.from){
+        messages.reverse().push(obj)
+     }
+     this.setState({list:messages.reverse()})
+     console.log(messages.reverse,'reverseee');
+     this.props.setReceivedMessage(null)
+   }
+ }
+
 
   render() {
     let {hasPermission,type,duration,timeFormat,isRecording,chatView,fullScreenMode} = this.state
@@ -1041,9 +1071,18 @@ startRecording=()=>{
       formdata.append("attach",video);
       formdata.append("from",this.state.myContact.number);
       formdata.append("to",strMobile);
-
-      formdata.append("notify",true);
-      console.log(formdata,this.state.myContact,SERVER_URL + '/sendExternalMessage/?from='+this.state.myContact.number+'&to='+strMobile,'nsdjnbfgjd');
+      var publish = false
+      if(this.props.callee!=null&&this.props.callee.status=='online'){
+        publish = true
+        // this.state.connection.session.publish(strMobile, [{'from':this.state.myContact.number.toString(),'to':strMobile,attach:null,
+        // thumbnail:null}] , {}, {
+        //     acknowledge: true
+        // })
+         var url = SERVER_URL + '/sendExternalMessage/?from='+this.state.myContact.number+'&to='+strMobile
+      }else{
+         var url = SERVER_URL + '/sendExternalMessage/?from='+this.state.myContact.number+'&to='+strMobile+'&notify=1'
+        formdata.append("notify",true);
+      }
 
       // try {
       //      let response = await fetch(SERVER_URL + '/sendExternalMessage/?from='+this.state.myContact.number+'&to='+strMobile, {
@@ -1078,7 +1117,7 @@ startRecording=()=>{
       list.push(obj)
       this.setState({list:list})
       this.setState({chatView:true,dataLoad:true})
-      await fetch(SERVER_URL + '/sendExternalMessage/?from='+this.state.myContact.number+'&to='+strMobile+'&notify=1', {
+      await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'multipart/form-data',
@@ -1088,7 +1127,6 @@ startRecording=()=>{
         body:formdata
         })
         .then((response) =>{
-          console.log(response.status,'bdsbgfrj');
           if(response.status==200||response.status==201){
             return response.json()
           }else{
@@ -1096,7 +1134,6 @@ startRecording=()=>{
           }
         })
         .then((responseJson) => {
-          console.log(responseJson,'hfsgm');
            if(responseJson!=undefined){
              var obj = {
                frm:this.state.myContact.pk,
@@ -1104,12 +1141,24 @@ startRecording=()=>{
                thumbnail:responseJson.thumbnail
              }
              list[0] = obj
+             if(publish){
+               this.state.connection.session.publish(strMobile, [{'from':this.state.myContact.number.toString(),'to':strMobile,attach:responseJson.url,
+               thumbnail:responseJson.thumbnail}] , {}, {
+                   acknowledge: true
+               })
+             }
              this.setState({list:list,dataLoad:false})
              // this.downLoadFile(responseJson.url)
              // this.reload()
              // this.props.navigation.state.params.onGoBack()
              // this.props.navigation.goBack()
            }else{
+              if(publish){
+                 this.state.connection.session.publish(strMobile, [{'from':this.state.myContact.number.toString(),'to':strMobile,attach:null,
+                 thumbnail:null}] , {}, {
+                     acknowledge: true
+                 })
+               }
              list.splice(list.length-1)
              this.setState({list:list,dataLoad:false})
              ToastAndroid.showWithGravity(
@@ -1156,10 +1205,9 @@ startRecording=()=>{
            return
          })
          .catch(error => {
-           console.error(error);
+           return
          });
       }else{
-        console.log(uriFile+'/'+fileName,'asngnd');
         var details = item
         details.localFile = uriFile+'/'+fileName
         this.setState({selectedVideo:item,details:item,fullScreenMode:false,playVideo:true})
@@ -1179,10 +1227,9 @@ startRecording=()=>{
             return
           })
           .catch(error => {
-            console.error(error);
+            return
           });
        }else{
-         console.log(uriFile+'/'+fileName,'asngnd');
          var details = item
          details.localFile = uriFile+'/'+fileName
          this.setState({selectedVideo:item,details:item,fullScreenMode:false,playVideo:true})
@@ -1229,12 +1276,16 @@ const styles = StyleSheet.create({
 const mapStateToProps =(state) => {
     return {
       videos: state.cartItems.videos,
+      callee: state.cartItems.callee,
+      receivedMessage: state.cartItems.receivedMessage,
   }
 }
 
 const mapDispatchToProps = (dispatch) => {
   return {
     addVideo:  (args) => dispatch(actions.addVideo(args)),
+    setCallee:  (args) => dispatch(actions.setCallee(args)),
+    setReceivedMessage:  (args) => dispatch(actions.receivedMessage(args)),
   };
 }
 

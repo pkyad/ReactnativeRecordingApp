@@ -6,6 +6,14 @@ export const addVideo = (video)=>({
   type: actionTypes.ADD_VIDEO,
   payload:video
 })
+export const setCallee= (callee)=>({
+  type: actionTypes.SET_CALLEE,
+  payload:callee
+})
+export const receivedMessage= (receivedMessage)=>({
+  type: actionTypes.RECEIVED_MESSAGE,
+  payload:receivedMessage
+})
 export const addToCart = (product)=>({
   type: actionTypes.ADD_TO_CART,
   payload:product

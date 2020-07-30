@@ -9,7 +9,9 @@ const initialState = {
     user:null,
     selectedAddress:null,
     store:{},
-    videos:[]
+    videos:[],
+    callee:null,
+    receivedMessage:null
 }
 
 let counter =0
@@ -165,6 +167,18 @@ const cartItems = (state = initialState, action) => {
           return {
               ...state,
               videos:videos
+          }
+       case actionTypes.SET_CALLEE:
+          var callee = action.payload
+          return {
+              ...state,
+              callee:callee
+          }
+       case actionTypes.RECEIVED_MESSAGE:
+          var receivedMessage = action.payload
+          return {
+              ...state,
+              receivedMessage:receivedMessage
           }
 
        default:

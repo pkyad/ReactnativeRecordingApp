@@ -30,6 +30,7 @@ import { Camera } from 'expo-camera';
 import { Audio, Video } from "expo-av";
 import { Notifications } from 'expo';
 import wamp from 'wamp.js2';
+import { NavigationActions } from 'react-navigation';
 
 const { width,height } = Dimensions.get('window');
 const SERVER_URL = settings.url
@@ -83,7 +84,8 @@ class InitialScreen extends React.Component {
         chatWith:null,
         getDisplayPic:null,
         showName:'',
-        routeName:'InitialScreen'
+        routeName:'InitialScreen',
+        toContact:null
       }
       willFocus = props.navigation.addListener(
        'didFocus',
@@ -129,7 +131,6 @@ class InitialScreen extends React.Component {
   }
 
   verifyOtp=(otp)=>{
-    console.log(otp,SERVER_URL + '/verifyExternalOTP/?mobile='+this.state.mobile+'&otp='+otp,'hhhhhhhhhhh');
     this.setState({loader:true})
     fetch(SERVER_URL + '/verifyExternalOTP/?mobile='+this.state.mobile+'&otp='+otp,{
       headers:{
@@ -139,7 +140,6 @@ class InitialScreen extends React.Component {
       }
     })
    .then((response) =>{
-     console.log(response.status,'assssssssss');
      if(response.status==200||response.status==201){
        return  response.json()
      }else{
@@ -147,7 +147,6 @@ class InitialScreen extends React.Component {
      }
    })
    .then((responseJson) => {
-     console.log(responseJson,'agbbbbbbbbb');
      if(responseJson!=undefined){
       this.setState({myContact:responseJson})
       this.getContactsList(responseJson.token)
@@ -198,7 +197,6 @@ class InitialScreen extends React.Component {
   }
 
   supportChat = (args)=>{
-    console.log(args[0],'supportChat',this.state.routeName);
 
     if(this.state.routeName=='InitialScreen'){
       if(args[0].from!=undefined){
@@ -217,6 +215,13 @@ class InitialScreen extends React.Component {
         })
         this.setState({contacts:contacts})
       }
+    }else{
+      var contact = this.state.toContact
+      contact.new = true
+      this.props.setReceivedMessage(contact)
+      // this.props.navigation.navigate('InitialScreen',{})
+
+      // this.props.navigation.navigate('HomeScreen',{connection:this.state.connection,myContact:this.state.myContact,toContact:this.state.toContact}, NavigationActions.navigate({ routeName: 'HomeScreen' }))
     }
     var msg = 'One message received from '+ args[0].from
     ToastAndroid.showWithGravityAndOffset(
@@ -228,13 +233,16 @@ class InitialScreen extends React.Component {
     )
   }
 
- //  checkHeartBeat = (args)=>{
- //   console.log(args,'heartBeat');
- // }
- //
- //  checkHeartBeatt = (args)=>{
- //   console.log(args,'checkHeartBeatt');
- // }
+  checkHeartBeat = (args)=>{
+   if(this.props.callee==null||(this.props.callee!=null&&this.props.callee.status=='offline')){
+     var callee = this.state.toContact
+     callee.status = 'online'
+     this.props.setCallee(callee)
+   }
+ }
+
+
+
 
 
 
@@ -245,13 +253,24 @@ class InitialScreen extends React.Component {
       this.setState({mobile:myContact.number,myContact:myContact})
 
       callProcedure=()=>{
-        if (this.state.myContact!=null) {
-             if (this.state.connection == null || this.state.connection.session == null || this.state.connection.session.call == null) {
+
+          if (this.state.toContact!=null) {
+
+             if (this.state.connection == null || this.state.connection.session == null ) {
                return
              }
-             this.state.connection.session.call(WAMP_PREFIX +'support.checkHeartBeat.' + this.state.myContact.number, ['online']).then(
+             if(this.state.toContact.id==undefined){
+               var mobile = this.state.toContact.mobile
+             }else{
+               var mobile = this.state.toContact.phoneNumbers[0].number
+             }
+             var strMobile = mobile.toString()
+              if(strMobile.includes('+')){
+                strMobile = strMobile.substring(3,strMobile.length)
+              }
+             this.state.connection.session.call('online.'+strMobile, [strMobile,'online']).then(
                (res)=> {
-                 console.log(res,'yyyy');
+                return
               },
               (err)=> {
                 return
@@ -260,18 +279,20 @@ class InitialScreen extends React.Component {
            }else {
              return
            }
+
       }
+
 
       this.state.connection.onopen = (session,details)=>{
           this.setState({session : session});
-          // setInterval(function () {
-          //    try {
-          //       callProcedure();
-          //    }
-          //    catch (e) {
-          //      console.error(e.message);
-          //    }
-          //  }, 2000);
+          this.rpaTimer = setInterval(function () {
+             try {
+                callProcedure();
+             }
+             catch (e) {
+               return
+             }
+           }, 2000);
           session.subscribe(myContact.number.toString(), this.supportChat).then(
           (sub) => {
           console.log('subscribing success support.checkHeartBeat');
@@ -279,49 +300,31 @@ class InitialScreen extends React.Component {
           (err) => {
             console.log("failed to subscribe: support.checkHeartBeat"+err);
           });
-
-          // session.publish(WAMP_PREFIX +'support.checkHeartBeat', this.checkHeartBeat).then(
-          //   function (res) {
-          //     console.log("publish to support.checkHeartBeat");
-          //   },
-          //   function (err) {
-          //     console.log("publish failed to subscribe: support.checkHeartBeat");
-          //   }
-          // );
-          //
-          // session.register(WAMP_PREFIX +'support.checkHeartBeat.'+myContact.number, this.checkHeartBeat).then(
-          //   function (res) {
-          //     console.log("register to support.checkHeartBeat",res,'res');
-          //   },
-          //   function (err) {
-          //     console.log("failed to register: support.checkHeartBeat",err);
-          //   }
-          // );
-          //
-          // session.call(WAMP_PREFIX +'support.chat', [2, 3]).then(
-          //    function (res) {
-          //       console.log("Result:", res);
-          //    }
-          // );
+          session.register('online.'+myContact.number.toString(), this.checkHeartBeat).then(
+            function (res) {
+              console.log("register to support.checkHeartBeat",res,'res');
+            },
+            function (err) {
+              console.log("failed to register: support.checkHeartBeat",err);
+            }
+          );
         }
 
         this.state.connection.open();
         this.getContactsList(myContact.token,myContact.number)
     }
     this.state.connection.onclose = (reason, details)=>{
-      console.log(reason,'resfsd');
+      clearInterval(this.rpaTimer)
     }
   }
   // _handleNotification = notification => {
   //   Vibration.vibrate();
-  //   console.log(notification,'lllllllll');
   //   this.setState({ notification: notification });
   //   // if(this.state.openNotification!=1)
   //   // this.props.navigation.navigate('InitialScreen')
   // };
   _handleRespondNotification = notification => {
     Vibration.vibrate();
-    console.log(notification,'lllllllll');
     this.setState({ notification: notification });
     // if(this.state.openNotification!=1)
     if(notification.origin=='selected'){
@@ -438,7 +441,8 @@ class InitialScreen extends React.Component {
   makeCountZero =(item,index)=>{
     var list = this.state.list
     list[index].count = 0
-    this.setState({list:list,routeName:'HomeScreen'})
+    this.props.setCallee(null)
+    this.setState({list:list,routeName:'HomeScreen',toContact:item})
     this.props.navigation.navigate('HomeScreen',{connection:this.state.connection,myContact:this.state.myContact,toContact:item})
   }
 
@@ -499,9 +503,11 @@ class InitialScreen extends React.Component {
       </View>
     )
   }
+  setContact=(item)=>{
+    this.setState({toContact:item})
+  }
 
   goToHome=(item,index)=>{
-    console.log(item);
     var list = this.state.contacts
     list[index].count = 0
     this.setState({contacts:list})
@@ -513,7 +519,8 @@ class InitialScreen extends React.Component {
       )
       return
     }else{
-      this.setState({routeName:'HomeScreen'})
+      this.props.setCallee(null)
+      this.setState({routeName:'HomeScreen',toContact:item})
       this.props.navigation.navigate('HomeScreen',{connection:this.state.connection,myContact:this.state.myContact,toContact:item})
     }
   }
@@ -683,12 +690,16 @@ const styles = StyleSheet.create({
 const mapStateToProps =(state) => {
     return {
       videos: state.cartItems.videos,
+      callee: state.cartItems.callee,
+      receivedMessage: state.cartItems.receivedMessage,
   }
 }
 
 const mapDispatchToProps = (dispatch) => {
   return {
     addVideo:  (args) => dispatch(actions.addVideo(args)),
+    setCallee:  (args) => dispatch(actions.setCallee(args)),
+    setReceivedMessage:  (args) => dispatch(actions.receivedMessage(args)),
   };
 }
 
